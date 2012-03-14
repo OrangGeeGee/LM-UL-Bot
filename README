@@ -1,0 +1,14 @@
+Instrukcijos norint kompiliuoti
+
+Reikia includinti Boost biblioteka, kuria galite gauti cia
+http://www.boostpro.com/download/
+
+Visual Studio C++ instrukcijos, kaip sukonfiginti include'us:
+
+Project Properties > Configuration Properties > C/C++ > Additional Include Directories
+C:\Program Files %28x86%29\boost\boost_1_47
+
+Project Properties > Configuration Properties > Linker > Additional Library Directories
+C:\Program Files %28x86%29\boost\boost_1_47\lib
+
+Atlikus siuos pakeitimus projektas kompiliuojasi
