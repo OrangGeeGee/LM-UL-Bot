@@ -1,6 +1,6 @@
 #include "FileHandler.h"
 
-FileHandler::FileHandler(path takeFrom, path putTo)
+FileHandler::FileHandler(path takeFrom, path putTo, string unrar)
 {
 	m_source = takeFrom;
 	m_title = m_source.stem().string();
@@ -8,10 +8,21 @@ FileHandler::FileHandler(path takeFrom, path putTo)
 	m_destinationForUploads = putTo;
 	m_destinationDir = m_destinationForUploads.string() + "\\" + m_source.filename().string();
 
+	m_unrar = unrar;
+
 	m_files = all_files_from_dir( m_source );
 	if(m_files.size() <= 0) throw std::exception ("No target files could be found.");
 
 	// find .nfo file
+	xpress::sregex nfoRegex = xpress::sregex::compile(".nfo$");
+
+	FileList::iterator file;
+	for ( file = m_files.begin(); file != m_files.end(); file++ )
+		if(xpress::regex_search(file->string(), nfoRegex)) {
+			m_nfo = *file;
+			cout << ".nfo file found" << endl;
+		}
+	
 }
  
 void FileHandler::transfer() {
@@ -21,32 +32,44 @@ void FileHandler::transfer() {
 	
 		FileList::iterator file;
 		string tmp, newDestination;
+		string unrar;
+		int returncode;
+		xpress::sregex partRegex = xpress::sregex::compile(".*((.part([2-9]|[0-9]{2,}).rar)|.r[0-9]{2})");
+		xpress::sregex rarRegex = xpress::sregex::compile(".*((.part1.rar)|(.rar))");
+		
 		// copy everything to destination dir
 		// except extract .rar files with parts e.g. .r01, .r02 etc
-		std::cout << m_source << std::endl;
 		for (  file = m_files.begin(); file != m_files.end(); file++ ) {
 			tmp = file->string();
-			tmp.replace(0,m_source.string().length(),"");
-			newDestination = m_destinationDir.string() + tmp;
-			fs::copy_file(file->string(), newDestination, fs::copy_option::overwrite_if_exists);
+			cout << tmp << " ";
+			if(xpress::regex_search(tmp, partRegex)) {
+				// found part file
+				cout << "ignore (part file)" << endl;
+			} else if (xpress::regex_search(tmp, rarRegex)) {
+				// found rar file - unrar
+				cout << "extract" << endl;
+				unrar = m_unrar+ " \"" +tmp+ "\" \"" +m_destinationDir.string()+ "\"";
+				returncode = system(unrar.c_str());
+				//cout << "unrar.exe returned " << returncode;
+				if(returncode!=0 && returncode!=10) {
+					string s ( "unrar.exe returned code " + boost::lexical_cast<string>( returncode ) );
+					throw std::exception( s.c_str() );
+				}
+					
+			} else {
+				// copy any other file
+				cout << "copy" << endl;
+				tmp.replace(0,m_source.string().length(),"");
+				newDestination = m_destinationDir.string() + tmp;
+				fs::copy_file(file->string(), newDestination, fs::copy_option::overwrite_if_exists);
+			}
 		}
 	} else {
+		cout << m_source << " copy" << endl;
 		fs::copy_file(m_source, m_destinationDir, fs::copy_option::overwrite_if_exists);
 	}
 
-/*
-
-	// extracts .rar files with parts e.g. .r01, .r02 etc
-	/*if(name.matches(".*((.part([2-9]|[0-9]{2,}).rar)|.r[0-9]{2})")) {
-    	echo("Found rar file "+name+" but it's a part; ignoring");
-    } else if(name.matches(".*((.part1.rar)|(.rar))")) {
-    	echo("Found rar file "+name);
-    	extract(file, destinationDir);
-    } else {
-    	echo("Copying a file "+name);
-    	copy(file, new File(destinationDir, name));
-    }
-*/
+	m_files = all_files_from_dir(m_destinationDir);
 }
 
 FileList FileHandler::all_files_from_dir(path dir) {

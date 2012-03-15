@@ -2,12 +2,14 @@
 //
 //#define BOOST_PROGRAM_OPTIONS_NO_LIB ON
 #define CONFIG_FILENAME "config.ini"
+#define D_SCL_SECURE_NO_WARNINGS ON
 
 #include <iostream>
 #include <string>
 #include <set>
 #include <exception>
 
+#include "boost/date_time/posix_time/posix_time.hpp"
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/filesystem/operations.hpp>
@@ -17,6 +19,7 @@
 using namespace std; 
 namespace pt = boost::property_tree;
 namespace fs = boost::filesystem;
+namespace ptime = boost::posix_time;
 
 int main(int argc, char* argv[])
 {	
@@ -39,7 +42,7 @@ int main(int argc, char* argv[])
 			pt::ini_parser::read_ini(configFilePath, pt);
 			fs::path destinationDir (pt.get<string>("Paths.destinationDir"));
 			fs::path torrentWatchDir (pt.get<string>("Paths.torrentWatchDir"));
-			string unpackerPath = pt.get<string>("Paths.unpacker");
+			string unpacker = pt.get<string>("Paths.unpacker");
 			string lmLoginCookie = pt.get<string>("LinkoManija.userLoginCookie");
 			logFile = pt.get<string>("MISC.logFile");
 			// some basic dir checks
@@ -48,10 +51,10 @@ int main(int argc, char* argv[])
 			cout << "Config file read with great success" << endl;
 
 			// init object responsible for file operations
-			FileHandler fh(target, destinationDir);
+			FileHandler fh(target, destinationDir, unpacker);
 			// copy/extract everything
-			cout << "Total " << fh.get_file_count() << " files in " << fh.get_destination_dir() << endl;
 			fh.transfer();
+			cout << "Total " << fh.get_file_count() << " files in " << fh.get_destination_dir() << endl;
 
 			// TODO make a new torrent file
 			
@@ -65,6 +68,19 @@ int main(int argc, char* argv[])
 		} catch(exception e) {
 			cout << "Exception caught: " << e.what() << endl;
 			
+			if(logFile.length() > 0) {
+
+				cout << "Writing error to " << logFile << endl;
+				ofstream myfile (logFile, ios::app); //"example.txt" );
+				if (myfile.is_open()) {
+					ptime::ptime now = ptime::second_clock::local_time();
+					myfile << ptime::to_simple_string(now) << " Error " << e.what() << "\n";
+					myfile << argv[0] << " " << argv[1] << "\n";
+					myfile << "\n";
+					myfile.close();
+				}
+				else cout << "Unable to open logFile" << endl;
+			}
 		}
 		
 
