@@ -20,7 +20,7 @@ FileHandler::FileHandler(path takeFrom, path putTo, string unrar)
 	for ( file = m_files.begin(); file != m_files.end(); file++ )
 		if(xpress::regex_search(file->string(), nfoRegex)) {
 			m_nfo = *file;
-			cout << ".nfo file found" << endl;
+			cout << ">> .nfo file found" << endl;
 		}
 	
 }
@@ -41,7 +41,7 @@ void FileHandler::transfer() {
 		// except extract .rar files with parts e.g. .r01, .r02 etc
 		for (  file = m_files.begin(); file != m_files.end(); file++ ) {
 			tmp = file->string();
-			cout << tmp << " ";
+			cout << ">> " << tmp << " ";
 			if(xpress::regex_search(tmp, partRegex)) {
 				// found part file
 				cout << "ignore (part file)" << endl;
@@ -65,7 +65,7 @@ void FileHandler::transfer() {
 			}
 		}
 	} else {
-		cout << m_source << " copy" << endl;
+		cout << ">> " << m_source << " copy" << endl;
 		fs::copy_file(m_source, m_destinationDir, fs::copy_option::overwrite_if_exists);
 	}
 

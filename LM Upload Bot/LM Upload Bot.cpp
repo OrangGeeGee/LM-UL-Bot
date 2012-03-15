@@ -3,6 +3,7 @@
 //#define BOOST_PROGRAM_OPTIONS_NO_LIB ON
 #define CONFIG_FILENAME "config.ini"
 #define D_SCL_SECURE_NO_WARNINGS ON
+#define TRACKER_URL "http://tracker.linkomanija.net:2710/announce"
 
 #include <iostream>
 #include <string>
@@ -14,6 +15,7 @@
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
+#include <boost/lexical_cast.hpp>
 #include "FileHandler.h"
 
 using namespace std; 
@@ -34,7 +36,7 @@ int main(int argc, char* argv[])
 	} else {
 		try {
 			fs::path target (argv[1]);
-			cout << "Starting work on " << target << endl;
+			cout << ">> Starting work on " << target << endl;
 
 			// config.ini file parse
 			string configFilePath (fs::current_path().string() + "\\" + CONFIG_FILENAME);
@@ -48,17 +50,36 @@ int main(int argc, char* argv[])
 			// some basic dir checks
 			if(!fs::is_directory(destinationDir)) throw exception("Destination directory incorrectly specified in configuration file.");
 			if(!fs::is_directory(torrentWatchDir)) throw exception("Torrent Watch directory incorrectly specified in configuration file.");
-			cout << "Config file read with great success" << endl;
+			cout << ">> Config file read with great success" << endl;
 
 			// init object responsible for file operations
 			FileHandler fh(target, destinationDir, unpacker);
 			// copy/extract everything
 			fh.transfer();
-			cout << "Total " << fh.get_file_count() << " files in " << fh.get_destination_dir() << endl;
+			cout << ">> Total " << fh.get_file_count() << " files in " << fh.get_destination_dir() << endl;
 
 			// TODO make a new torrent file
-			
+			string torrentName (fh.get_title()+".torrent");
+			string makeTorrent ("mktorrent.exe -a "
+				TRACKER_URL 
+				" -o \""+torrentName+"\" "
+				"\""+fh.get_destination_dir()+"\""
+			);
+			if (fs::exists(torrentName)) {
+				cout << ">> Deleting left over file " << torrentName << endl;
+				fs::remove(torrentName);
+			}
+			cout << ">> Creating temp .torrent file " << torrentName << endl;
+			int makeTorrentCode = system(makeTorrent.c_str());
+			if(makeTorrentCode!=0) {
+				string error = string("Could not create torrent file " + boost::lexical_cast<string>( makeTorrentCode )+". Command used "+makeTorrent );
+				throw exception(error.c_str());
+			}
+
+			cout << ">> Temp .torrent file created." << endl;
+
 			// TODO make description for lm
+			//cout << ">> Fetching description";
 			
 			// TODO determine lm category 
 			
@@ -66,11 +87,11 @@ int main(int argc, char* argv[])
 			
 			// TODO download new torrent file and save it to output dir
 		} catch(exception e) {
-			cout << "Exception caught: " << e.what() << endl;
+			cout << ">> Exception caught: " << e.what() << endl;
 			
 			if(logFile.length() > 0) {
 
-				cout << "Writing error to " << logFile << endl;
+				cout << ">> Writing error to " << logFile << endl;
 				ofstream myfile (logFile, ios::app); //"example.txt" );
 				if (myfile.is_open()) {
 					ptime::ptime now = ptime::second_clock::local_time();
@@ -79,7 +100,7 @@ int main(int argc, char* argv[])
 					myfile << "\n";
 					myfile.close();
 				}
-				else cout << "Unable to open logFile" << endl;
+				else cout << ">> Unable to open logFile" << endl;
 			}
 		}
 		
