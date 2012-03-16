@@ -34,18 +34,15 @@ void FileHandler::transfer() {
 		string tmp, newDestination;
 		string unrar;
 		int returncode;
-		xpress::sregex partRegex = xpress::sregex::compile(".*((.part([2-9]|[0-9]{2,}).rar)|.r[0-9]{2})");
-		xpress::sregex rarRegex = xpress::sregex::compile(".*((.part1.rar)|(.rar))");
+		xpress::sregex partRegex = xpress::sregex::compile(".*((.part([2-9]|[0-9]{2,}).rar)|.r[0-9]{2}|.[0-9]{3})");
+		xpress::sregex rarRegex = xpress::sregex::compile(".*((.part1.rar)|(.rar)|(.001))");
 		
 		// copy everything to destination dir
 		// except extract .rar files with parts e.g. .r01, .r02 etc
 		for (  file = m_files.begin(); file != m_files.end(); file++ ) {
 			tmp = file->string();
 			cout << ">> " << tmp << " ";
-			if(xpress::regex_search(tmp, partRegex)) {
-				// found part file
-				cout << "ignore (part file)" << endl;
-			} else if (xpress::regex_search(tmp, rarRegex)) {
+			if (xpress::regex_search(tmp, rarRegex)) {
 				// found rar file - unrar
 				cout << "extract" << endl;
 				unrar = m_unrar+ " \"" +tmp+ "\" \"" +m_destinationDir.string()+ "\"";
@@ -56,6 +53,9 @@ void FileHandler::transfer() {
 					throw std::exception( s.c_str() );
 				}
 					
+			} else if(xpress::regex_search(tmp, partRegex)) {
+				// found part file
+				cout << "ignore (part file)" << endl;
 			} else {
 				// copy any other file
 				cout << "copy" << endl;
